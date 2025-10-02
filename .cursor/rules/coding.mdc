@@ -1,0 +1,23 @@
+---
+alwaysApply: true
+---
+
+# Coding Rules
+
+## Principles & Code Quality
+
+ALWAYS apply Dependency Inversion to make code testable
+ALWAYS ensure that generated code has TSDoc comments
+SHOULD prefer to modify files rather than create new ones to prevent excessive new file changes
+
+## Testing & Validation
+
+NEVER write tests unless requested
+NEVER attempt to run the dev server or the build command unless explicitly asked by the user
+
+## Documentation and Notes
+
+- ALWAYS write to ONLY ONE doc file that consolidates all your changes in the session unless explicitly asked by the user
+- ALWAYS prefer to keep wording concise and to the point
+- ALWAYS prefer to use code to represent complex concepts when words may be ambiguous
+- ALWAYS use typescript interfaces to represent data models, contracts
