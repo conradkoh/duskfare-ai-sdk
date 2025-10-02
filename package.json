@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "name": "duskfare-ai-sdk",
   "version": "1.0.0",
   "description": "",
