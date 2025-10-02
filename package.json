@@ -17,6 +17,8 @@
   "license": "ISC",
   "packageManager": "pnpm@10.9.0",
   "dependencies": {
+    "@ai-sdk/openai": "^2.0.42",
+    "ai": "^5.0.59",
     "bun": "^1.2.23",
     "typescript": "^5.9.3"
   },
