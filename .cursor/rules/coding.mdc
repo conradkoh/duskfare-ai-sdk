@@ -17,7 +17,7 @@ NEVER attempt to run the dev server or the build command unless explicitly asked
 
 ## Documentation and Notes
 
-- ALWAYS write to ONLY ONE doc file that consolidates all your changes in the session unless explicitly asked by the user
+- ALWAYS prefer to update existing doc files rather than create new ones, unless necessary
 - ALWAYS prefer to keep wording concise and to the point
 - ALWAYS prefer to use code to represent complex concepts when words may be ambiguous
 - ALWAYS use typescript interfaces to represent data models, contracts
