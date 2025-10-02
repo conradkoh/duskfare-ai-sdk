@@ -88,9 +88,9 @@ line 5`;
       const diff = {
         operations: [
           {
-            type: "insert" as const,
+            type: "insert_block" as const,
             lineNumber: 2, // Insert after line 2
-            content: "inserted line",
+            lines: ["inserted line"],
           },
         ],
       };
@@ -111,8 +111,9 @@ line 5`);
       const diff = {
         operations: [
           {
-            type: "delete" as const,
-            lineNumber: 3, // Delete line 3
+            type: "delete_range" as const,
+            startLine: 3, // Delete line 3
+            endLine: 3,
           },
         ],
       };
@@ -131,9 +132,10 @@ line 5`);
       const diff = {
         operations: [
           {
-            type: "replace" as const,
-            lineNumber: 3,
-            content: "replaced line 3",
+            type: "replace_range" as const,
+            startLine: 3,
+            endLine: 3,
+            lines: ["replaced line 3"],
           },
         ],
       };
@@ -153,18 +155,20 @@ line 5`);
       const diff = {
         operations: [
           {
-            type: "delete" as const,
-            lineNumber: 2, // Delete line 2 ("line 2")
+            type: "delete_range" as const,
+            startLine: 2, // Delete line 2 ("line 2")
+            endLine: 2,
           },
           {
-            type: "insert" as const,
+            type: "insert_block" as const,
             lineNumber: 2, // Insert after line 2 (which is now "line 3")
-            content: "new line",
+            lines: ["new line"],
           },
           {
-            type: "replace" as const,
-            lineNumber: 5, // Replace line 5 (which is now "line 5")
-            content: "final line",
+            type: "replace_range" as const,
+            startLine: 5, // Replace line 5 (which is now "line 5")
+            endLine: 5,
+            lines: ["final line"],
           },
         ],
       };
@@ -184,9 +188,9 @@ final line`);
       const diff = {
         operations: [
           {
-            type: "insert" as const,
+            type: "insert_block" as const,
             lineNumber: 0, // Insert at beginning
-            content: "first line",
+            lines: ["first line"],
           },
         ],
       };
@@ -207,9 +211,9 @@ line 5`);
       const diff = {
         operations: [
           {
-            type: "insert" as const,
+            type: "insert_block" as const,
             lineNumber: 5, // Insert after last line
-            content: "last line",
+            lines: ["last line"],
           },
         ],
       };
@@ -231,9 +235,9 @@ last line`);
       const diff = {
         operations: [
           {
-            type: "insert" as const,
+            type: "insert_block" as const,
             lineNumber: 1,
-            content: "new line",
+            lines: ["new line"],
           },
         ],
       };
@@ -248,8 +252,9 @@ last line`);
       const diff = {
         operations: [
           {
-            type: "delete" as const,
-            lineNumber: 99, // Line doesn't exist
+            type: "delete_range" as const,
+            startLine: 99, // Line doesn't exist
+            endLine: 99,
           },
         ],
       };
@@ -264,9 +269,10 @@ last line`);
       const diff = {
         operations: [
           {
-            type: "replace" as const,
-            lineNumber: 99,
-            content: "replacement",
+            type: "replace_range" as const,
+            startLine: 99,
+            endLine: 99,
+            lines: ["replacement"],
           },
         ],
       };
@@ -566,7 +572,8 @@ return 3;`);
       const result = await fileTool.applyDiff(testFilePath, diff);
 
       expect(result.error).toBeInstanceOf(Error);
-      expect(result.error?.message).toContain("Could not find content");
+      expect(result.error?.message).toContain("Could not find occurrence");
+      expect(result.error?.message).toContain("Found 0 matches total");
     });
   });
 
@@ -690,9 +697,8 @@ const x = 3;`);
       const result = await fileTool.applyDiff(testFilePath, diff);
 
       expect(result.error).toBeInstanceOf(Error);
-      expect(result.error?.message).toContain(
-        "Could not find content to replace"
-      );
+      expect(result.error?.message).toContain("Could not find occurrence");
+      expect(result.error?.message).toContain("Found 0 matches total");
     });
   });
 
@@ -756,9 +762,8 @@ line 4`);
       const result = await fileTool.applyDiff(testFilePath, diff);
 
       expect(result.error).toBeInstanceOf(Error);
-      expect(result.error?.message).toContain(
-        "Could not find content to delete"
-      );
+      expect(result.error?.message).toContain("Could not find occurrence");
+      expect(result.error?.message).toContain("Found 0 matches total");
     });
   });
 

@@ -6,83 +6,63 @@ import path from "path";
  * Represents a single diff operation that can be applied to a file
  */
 export type DiffOperation =
-  // Simple line-based operations
-  | {
-      type: "insert";
-      /** Line number after which to insert (0 = beginning of file) */
-      lineNumber: number;
-      /** Content to insert */
-      content: string;
-    }
-  | {
-      type: "delete";
-      /** Line number to delete (1-indexed) */
-      lineNumber: number;
-    }
-  | {
-      type: "replace";
-      /** Line number to replace (1-indexed) */
-      lineNumber: number;
-      /** New content for the line */
-      content: string;
-    }
-  // Block operations (multi-line)
+  // Line/block operations (with line numbers)
   | {
       type: "insert_block";
       /** Line number after which to insert (0 = beginning of file) */
       lineNumber: number;
-      /** Array of lines to insert */
+      /** Array of lines to insert (use single-element array for one line) */
       lines: string[];
     }
   | {
       type: "delete_range";
       /** Starting line number to delete (1-indexed, inclusive) */
       startLine: number;
-      /** Ending line number to delete (1-indexed, inclusive) */
+      /** Ending line number to delete (1-indexed, inclusive). Use same as startLine to delete one line. */
       endLine: number;
     }
   | {
       type: "replace_range";
       /** Starting line number to replace (1-indexed, inclusive) */
       startLine: number;
-      /** Ending line number to replace (1-indexed, inclusive) */
+      /** Ending line number to replace (1-indexed, inclusive). Use same as startLine to replace one line. */
       endLine: number;
       /** Array of lines to replace with */
       lines: string[];
     }
-  // Context-based operations (find by content)
+  // Context-based operations (find by content - no line numbers)
   | {
       type: "insert_after";
-      /** Content to search for in the file */
+      /** Content to search for in the file (uses partial matching with .includes()) */
       searchContent: string;
       /** Content to insert after the found line */
       content: string;
-      /** Which occurrence to match (1-indexed, default: 1) */
+      /** Which occurrence to match (1-indexed, default: 1). Specify to handle ambiguity. */
       occurrence?: number;
     }
   | {
       type: "insert_before";
-      /** Content to search for in the file */
+      /** Content to search for in the file (uses partial matching with .includes()) */
       searchContent: string;
       /** Content to insert before the found line */
       content: string;
-      /** Which occurrence to match (1-indexed, default: 1) */
+      /** Which occurrence to match (1-indexed, default: 1). Specify to handle ambiguity. */
       occurrence?: number;
     }
   | {
       type: "replace_content";
-      /** Exact content to find and replace (can be multi-line) */
+      /** Exact content to find and replace (can be multi-line, must match exactly) */
       oldContent: string;
       /** New content to replace with */
       newContent: string;
-      /** Which occurrence to match (1-indexed, default: 1) */
+      /** Which occurrence to match (1-indexed, default: 1). Specify to handle ambiguity. */
       occurrence?: number;
     }
   | {
       type: "delete_content";
-      /** Content to find and delete (can be multi-line) */
+      /** Content to find and delete (can be multi-line, must match exactly) */
       content: string;
-      /** Which occurrence to match (1-indexed, default: 1) */
+      /** Which occurrence to match (1-indexed, default: 1). Specify to handle ambiguity. */
       occurrence?: number;
     };
 
@@ -158,48 +138,6 @@ export class FileToolImpl implements FileTool {
       // Apply each operation in sequence
       for (const operation of diff.operations) {
         switch (operation.type) {
-          case "insert": {
-            // Insert after the specified line number (0 = beginning)
-            if (
-              operation.lineNumber < 0 ||
-              operation.lineNumber > lines.length
-            ) {
-              throw new Error(
-                `Insert line number ${operation.lineNumber} is out of bounds (file has ${lines.length} lines)`
-              );
-            }
-            lines.splice(operation.lineNumber, 0, operation.content);
-            break;
-          }
-
-          case "delete": {
-            // Delete the specified line (1-indexed)
-            if (
-              operation.lineNumber < 1 ||
-              operation.lineNumber > lines.length
-            ) {
-              throw new Error(
-                `Delete line number ${operation.lineNumber} is out of bounds (file has ${lines.length} lines)`
-              );
-            }
-            lines.splice(operation.lineNumber - 1, 1);
-            break;
-          }
-
-          case "replace": {
-            // Replace the specified line (1-indexed)
-            if (
-              operation.lineNumber < 1 ||
-              operation.lineNumber > lines.length
-            ) {
-              throw new Error(
-                `Replace line number ${operation.lineNumber} is out of bounds (file has ${lines.length} lines)`
-              );
-            }
-            lines[operation.lineNumber - 1] = operation.content;
-            break;
-          }
-
           case "insert_block": {
             // Insert multiple lines after the specified line number
             if (
@@ -207,7 +145,7 @@ export class FileToolImpl implements FileTool {
               operation.lineNumber > lines.length
             ) {
               throw new Error(
-                `Insert block line number ${operation.lineNumber} is out of bounds (file has ${lines.length} lines)`
+                `insert_block: Line number ${operation.lineNumber} is out of bounds (file has ${lines.length} lines)`
               );
             }
             lines.splice(operation.lineNumber, 0, ...operation.lines);
@@ -222,7 +160,7 @@ export class FileToolImpl implements FileTool {
               operation.startLine > operation.endLine
             ) {
               throw new Error(
-                `Delete range ${operation.startLine}-${operation.endLine} is invalid (file has ${lines.length} lines)`
+                `delete_range: Range ${operation.startLine}-${operation.endLine} is invalid (file has ${lines.length} lines)`
               );
             }
             const deleteCount = operation.endLine - operation.startLine + 1;
@@ -238,7 +176,7 @@ export class FileToolImpl implements FileTool {
               operation.startLine > operation.endLine
             ) {
               throw new Error(
-                `Replace range ${operation.startLine}-${operation.endLine} is invalid (file has ${lines.length} lines)`
+                `replace_range: Range ${operation.startLine}-${operation.endLine} is invalid (file has ${lines.length} lines)`
               );
             }
             const deleteCount = operation.endLine - operation.startLine + 1;
@@ -252,47 +190,54 @@ export class FileToolImpl implements FileTool {
 
           case "insert_after": {
             // Find content and insert after it
-            const lineIndex = this.findContentLine(
+            const occurrence = operation.occurrence ?? 1;
+            const result = this.findContentLine(
               lines,
               operation.searchContent,
-              operation.occurrence ?? 1
+              occurrence
             );
-            if (lineIndex === -1) {
+            if (result.index === -1) {
               throw new Error(
-                `Could not find content: "${operation.searchContent}"`
+                `insert_after: Could not find occurrence ${occurrence} of "${operation.searchContent}". Found ${result.totalMatches} matches total.`
               );
             }
-            lines.splice(lineIndex + 1, 0, operation.content);
+            lines.splice(result.index + 1, 0, operation.content);
             break;
           }
 
           case "insert_before": {
             // Find content and insert before it
-            const lineIndex = this.findContentLine(
+            const occurrence = operation.occurrence ?? 1;
+            const result = this.findContentLine(
               lines,
               operation.searchContent,
-              operation.occurrence ?? 1
+              occurrence
             );
-            if (lineIndex === -1) {
+            if (result.index === -1) {
               throw new Error(
-                `Could not find content: "${operation.searchContent}"`
+                `insert_before: Could not find occurrence ${occurrence} of "${operation.searchContent}". Found ${result.totalMatches} matches total.`
               );
             }
-            lines.splice(lineIndex, 0, operation.content);
+            lines.splice(result.index, 0, operation.content);
             break;
           }
 
           case "replace_content": {
             // Find content and replace it
+            const occurrence = operation.occurrence ?? 1;
             const result = this.findAndReplaceContent(
               lines,
               operation.oldContent,
               operation.newContent,
-              operation.occurrence ?? 1
+              occurrence
             );
             if (!result.found) {
+              const preview =
+                operation.oldContent.length > 50
+                  ? operation.oldContent.substring(0, 50) + "..."
+                  : operation.oldContent;
               throw new Error(
-                `Could not find content to replace: "${operation.oldContent}"`
+                `replace_content: Could not find occurrence ${occurrence} of content. Found ${result.totalMatches} matches total. Searching for: "${preview}"`
               );
             }
             lines = result.lines;
@@ -301,14 +246,19 @@ export class FileToolImpl implements FileTool {
 
           case "delete_content": {
             // Find content and delete it
+            const occurrence = operation.occurrence ?? 1;
             const result = this.findAndDeleteContent(
               lines,
               operation.content,
-              operation.occurrence ?? 1
+              occurrence
             );
             if (!result.found) {
+              const preview =
+                operation.content.length > 50
+                  ? operation.content.substring(0, 50) + "..."
+                  : operation.content;
               throw new Error(
-                `Could not find content to delete: "${operation.content}"`
+                `delete_content: Could not find occurrence ${occurrence} of content. Found ${result.totalMatches} matches total. Searching for: "${preview}"`
               );
             }
             lines = result.lines;
@@ -334,24 +284,28 @@ export class FileToolImpl implements FileTool {
    * @param lines - Array of lines to search
    * @param searchContent - Content to search for
    * @param occurrence - Which occurrence to find (1-indexed)
-   * @returns Line index (0-based) or -1 if not found
+   * @returns Object with line index (0-based, -1 if not found) and total matches found
    */
   private findContentLine(
     lines: string[],
     searchContent: string,
     occurrence: number
-  ): number {
+  ): { index: number; totalMatches: number } {
     let count = 0;
+    let foundIndex = -1;
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       if (line !== undefined && line.includes(searchContent)) {
         count++;
-        if (count === occurrence) {
-          return i;
+        if (count === occurrence && foundIndex === -1) {
+          foundIndex = i;
+          // Continue counting to get total matches
         }
       }
     }
-    return -1;
+
+    return { index: foundIndex, totalMatches: count };
   }
 
   /**
@@ -360,21 +314,22 @@ export class FileToolImpl implements FileTool {
    * @param oldContent - Content to find
    * @param newContent - Content to replace with
    * @param occurrence - Which occurrence to replace
-   * @returns Updated lines and whether content was found
+   * @returns Updated lines, whether content was found, and total matches
    */
   private findAndReplaceContent(
     lines: string[],
     oldContent: string,
     newContent: string,
     occurrence: number
-  ): { lines: string[]; found: boolean } {
-    const fullText = lines.join("\n");
+  ): { lines: string[]; found: boolean; totalMatches: number } {
     const oldContentLines = oldContent.split("\n");
     const newContentLines = newContent.split("\n");
 
-    // Find the occurrence
-    let count = 0;
+    // Find all occurrences first
+    let totalMatches = 0;
+    let targetIndex = -1;
     let startIndex = 0;
+
     while (startIndex < lines.length) {
       // Check if we have a match starting at startIndex
       let matches = true;
@@ -389,15 +344,9 @@ export class FileToolImpl implements FileTool {
       }
 
       if (matches) {
-        count++;
-        if (count === occurrence) {
-          // Replace the content
-          const result = [
-            ...lines.slice(0, startIndex),
-            ...newContentLines,
-            ...lines.slice(startIndex + oldContentLines.length),
-          ];
-          return { lines: result, found: true };
+        totalMatches++;
+        if (totalMatches === occurrence) {
+          targetIndex = startIndex;
         }
         startIndex += oldContentLines.length;
       } else {
@@ -405,7 +354,17 @@ export class FileToolImpl implements FileTool {
       }
     }
 
-    return { lines, found: false };
+    // If we found the target occurrence, replace it
+    if (targetIndex !== -1) {
+      const result = [
+        ...lines.slice(0, targetIndex),
+        ...newContentLines,
+        ...lines.slice(targetIndex + oldContentLines.length),
+      ];
+      return { lines: result, found: true, totalMatches };
+    }
+
+    return { lines, found: false, totalMatches };
   }
 
   /**
@@ -413,18 +372,20 @@ export class FileToolImpl implements FileTool {
    * @param lines - Array of lines
    * @param content - Content to find and delete
    * @param occurrence - Which occurrence to delete
-   * @returns Updated lines and whether content was found
+   * @returns Updated lines, whether content was found, and total matches
    */
   private findAndDeleteContent(
     lines: string[],
     content: string,
     occurrence: number
-  ): { lines: string[]; found: boolean } {
+  ): { lines: string[]; found: boolean; totalMatches: number } {
     const contentLines = content.split("\n");
 
-    // Find the occurrence
-    let count = 0;
+    // Find all occurrences first
+    let totalMatches = 0;
+    let targetIndex = -1;
     let startIndex = 0;
+
     while (startIndex < lines.length) {
       // Check if we have a match starting at startIndex
       let matches = true;
@@ -439,14 +400,9 @@ export class FileToolImpl implements FileTool {
       }
 
       if (matches) {
-        count++;
-        if (count === occurrence) {
-          // Delete the content
-          const result = [
-            ...lines.slice(0, startIndex),
-            ...lines.slice(startIndex + contentLines.length),
-          ];
-          return { lines: result, found: true };
+        totalMatches++;
+        if (totalMatches === occurrence) {
+          targetIndex = startIndex;
         }
         startIndex += contentLines.length;
       } else {
@@ -454,6 +410,15 @@ export class FileToolImpl implements FileTool {
       }
     }
 
-    return { lines, found: false };
+    // If we found the target occurrence, delete it
+    if (targetIndex !== -1) {
+      const result = [
+        ...lines.slice(0, targetIndex),
+        ...lines.slice(targetIndex + contentLines.length),
+      ];
+      return { lines: result, found: true, totalMatches };
+    }
+
+    return { lines, found: false, totalMatches };
   }
 }
