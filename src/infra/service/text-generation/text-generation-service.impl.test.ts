@@ -26,7 +26,7 @@ vi.mock("@ai-sdk/openai", () => ({
 
 describe("VercelAITextGenerationService", () => {
   let service: VercelAITextGenerationService;
-  const mockModel = { modelId: "gpt-4" };
+  const mockModel = "gpt-4";
 
   beforeEach(() => {
     vi.clearAllMocks();

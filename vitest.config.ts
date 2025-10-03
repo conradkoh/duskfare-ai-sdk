@@ -8,6 +8,7 @@ export default defineConfig({
     exclude: [
       "**/node_modules/**",
       "**/dist/**",
+      "**/*.integration.{test,spec}.{js,ts,tsx}", // Exclude integration tests (run with Bun)
     ],
     coverage: {
       provider: "v8",
@@ -20,6 +21,7 @@ export default defineConfig({
         "**/mockData",
         "src/**/*.test.{js,ts,tsx}",
         "src/**/*.spec.{js,ts,tsx}",
+        "**/*.integration.test.{js,ts,tsx}", // Exclude integration tests from coverage
       ],
     },
   },

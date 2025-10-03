@@ -1,5 +1,7 @@
 import { generateText, streamText, type LanguageModel } from "ai";
-import { openai, createOpenAI } from "@ai-sdk/openai";
+import { createOpenAI } from "@ai-sdk/openai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import type { TextGenerationService } from "./text-generation-service.js";
 import type {
   TextGenerationConfig,
@@ -7,6 +9,11 @@ import type {
   TextStreamResult,
   ModelConfig,
 } from "./types.js";
+import {
+  AISDKGenerateTextResponseSchema,
+  AISDKUsageSchema,
+  AISDKFinishReasonSchema,
+} from "./schemas.js";
 
 /**
  * Implementation of TextGenerationService using Vercel AI SDK
@@ -66,6 +73,31 @@ export class VercelAITextGenerationService implements TextGenerationService {
           }),
           ...(modelConfig.config.project && {
             project: modelConfig.config.project,
+          }),
+          ...(modelConfig.config.headers && {
+            headers: modelConfig.config.headers,
+          }),
+        });
+        return provider(modelConfig.modelId);
+      }
+      case "google": {
+        const provider = createGoogleGenerativeAI({
+          apiKey: modelConfig.config.apiKey,
+          ...(modelConfig.config.baseURL && {
+            baseURL: modelConfig.config.baseURL,
+          }),
+          ...(modelConfig.config.headers && {
+            headers: modelConfig.config.headers,
+          }),
+        });
+        return provider(modelConfig.modelId);
+      }
+      case "openrouter": {
+        const provider = createOpenRouter({
+          apiKey: modelConfig.config.apiKey,
+          compatibility: "strict" as const,
+          ...(modelConfig.config.baseURL && {
+            baseURL: modelConfig.config.baseURL,
           }),
           ...(modelConfig.config.headers && {
             headers: modelConfig.config.headers,
@@ -170,24 +202,50 @@ export class VercelAITextGenerationService implements TextGenerationService {
 
   /**
    * Adapts Vercel AI SDK generateText result to domain entity
+   * Validates the response schema using Zod before adapting
    * @param sdkResult - Result from AI SDK generateText
    * @returns Adapted TextGenerationResult
+   * @throws Error if validation fails
    */
-  private adaptGenerateTextResult(sdkResult: any): TextGenerationResult {
+  private adaptGenerateTextResult(sdkResult: unknown): TextGenerationResult {
+    // Validate the response schema from external AI SDK
+    const validated = AISDKGenerateTextResponseSchema.parse(sdkResult);
+
+    // Build usage object with proper optional handling for exactOptionalPropertyTypes
+    const usage: TextGenerationResult["usage"] = {
+      totalTokens: validated.usage.totalTokens,
+    };
+    if (validated.usage.promptTokens !== undefined) {
+      usage.promptTokens = validated.usage.promptTokens;
+    }
+    if (validated.usage.completionTokens !== undefined) {
+      usage.completionTokens = validated.usage.completionTokens;
+    }
+
+    // Extract model with proper type casting for provider metadata
+    const model = validated.experimental_providerMetadata
+      ? this.extractModelFromProviderMetadata(
+          validated.experimental_providerMetadata as
+            | {
+                openai?: { model?: string };
+                anthropic?: { model?: string };
+                google?: { model?: string };
+              }
+            | undefined
+        )
+      : "unknown";
+
     return {
-      text: sdkResult.text,
-      usage: {
-        promptTokens: sdkResult.usage.promptTokens,
-        completionTokens: sdkResult.usage.completionTokens,
-        totalTokens: sdkResult.usage.totalTokens,
-      },
-      finishReason: this.mapFinishReason(sdkResult.finishReason),
-      model: this.extractModel(sdkResult),
+      text: validated.text,
+      usage,
+      finishReason: this.mapFinishReason(validated.finishReason),
+      model,
     };
   }
 
   /**
    * Adapts Vercel AI SDK streamText result to domain entity
+   * Validates the response schema using Zod before adapting
    * @param sdkResult - Result from AI SDK streamText
    * @returns Adapted TextStreamResult
    */
@@ -200,13 +258,31 @@ export class VercelAITextGenerationService implements TextGenerationService {
         sdkResult.experimental_providerMetadata,
       ]);
 
+      // Validate usage schema from external AI SDK
+      const validatedUsage = AISDKUsageSchema.parse(usage);
+
+      // Validate finish reason from external AI SDK
+      const validatedFinishReason = AISDKFinishReasonSchema.parse(finishReason);
+
+      // Build usage object with proper optional handling for exactOptionalPropertyTypes
+      type MetadataUsage = {
+        promptTokens?: number;
+        completionTokens?: number;
+        totalTokens: number;
+      };
+      const usageResult: MetadataUsage = {
+        totalTokens: validatedUsage.totalTokens,
+      };
+      if (validatedUsage.promptTokens !== undefined) {
+        usageResult.promptTokens = validatedUsage.promptTokens;
+      }
+      if (validatedUsage.completionTokens !== undefined) {
+        usageResult.completionTokens = validatedUsage.completionTokens;
+      }
+
       return {
-        usage: {
-          promptTokens: usage.promptTokens,
-          completionTokens: usage.completionTokens,
-          totalTokens: usage.totalTokens,
-        },
-        finishReason: this.mapFinishReason(finishReason),
+        usage: usageResult,
+        finishReason: this.mapFinishReason(validatedFinishReason),
         model: this.extractModelFromProviderMetadata(providerMetadata),
       };
     })();
@@ -232,11 +308,18 @@ export class VercelAITextGenerationService implements TextGenerationService {
 
   /**
    * Maps AI SDK finish reasons to domain finish reasons
-   * @param sdkFinishReason - Finish reason from AI SDK
+   * @param sdkFinishReason - Finish reason from AI SDK (validated by Zod)
    * @returns Mapped finish reason
    */
   private mapFinishReason(
-    sdkFinishReason: string
+    sdkFinishReason:
+      | "stop"
+      | "length"
+      | "content-filter"
+      | "error"
+      | "tool-calls"
+      | "unknown"
+      | "other"
   ): TextGenerationResult["finishReason"] {
     switch (sdkFinishReason) {
       case "stop":
@@ -247,17 +330,27 @@ export class VercelAITextGenerationService implements TextGenerationService {
         return "content-filter";
       case "error":
         return "error";
+      case "tool-calls":
+      case "unknown":
       default:
         return "other";
     }
   }
 
   /**
-   * Extracts model identifier from SDK result
-   * @param sdkResult - Result from AI SDK
+   * Extracts model identifier from SDK result (validated)
+   * @param sdkResult - Validated result from AI SDK
    * @returns Model identifier
    */
-  private extractModel(sdkResult: any): string {
+  private extractModel(sdkResult: {
+    experimental_providerMetadata?:
+      | {
+          openai?: { model?: string };
+          anthropic?: { model?: string };
+          google?: { model?: string };
+        }
+      | undefined;
+  }): string {
     return this.extractModelFromProviderMetadata(
       sdkResult.experimental_providerMetadata
     );
@@ -268,16 +361,29 @@ export class VercelAITextGenerationService implements TextGenerationService {
    * @param providerMetadata - Provider metadata from AI SDK
    * @returns Model identifier
    */
-  private extractModelFromProviderMetadata(providerMetadata: any): string {
+  private extractModelFromProviderMetadata(
+    providerMetadata:
+      | {
+          openai?: { model?: string };
+          anthropic?: { model?: string };
+          google?: { model?: string };
+        }
+      | undefined
+  ): string {
     // Try OpenAI first
     if (providerMetadata?.openai?.model) {
       return providerMetadata.openai.model;
     }
 
-    // Could extend for other providers
-    // if (providerMetadata?.anthropic?.model) {
-    //   return providerMetadata.anthropic.model;
-    // }
+    // Try Anthropic
+    if (providerMetadata?.anthropic?.model) {
+      return providerMetadata.anthropic.model;
+    }
+
+    // Try Google
+    if (providerMetadata?.google?.model) {
+      return providerMetadata.google.model;
+    }
 
     return "unknown";
   }

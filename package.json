@@ -10,7 +10,8 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "bun test --env-file=.env.test src/infra/service/text-generation/text-generation-service.integration.test.ts"
   },
   "keywords": [],
   "author": "",
@@ -18,9 +19,13 @@
   "packageManager": "pnpm@10.9.0",
   "dependencies": {
     "@ai-sdk/openai": "^2.0.42",
+    "@ai-sdk/google": "^2.0.17",
+    "@openrouter/ai-sdk-provider": "^1.2.0",
+    "@types/bun": "^1.2.23",
     "ai": "^5.0.59",
     "bun": "^1.2.23",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "zod": "^4.1.11"
   },
   "devDependencies": {
     "@types/node": "^24.6.2",

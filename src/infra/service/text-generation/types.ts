@@ -6,10 +6,10 @@ export interface TextGenerationResult {
   text: string;
   /** Token usage statistics */
   usage: {
-    /** Number of tokens in the prompt */
-    promptTokens: number;
-    /** Number of tokens in the completion */
-    completionTokens: number;
+    /** Number of tokens in the prompt (may be undefined for some providers) */
+    promptTokens?: number;
+    /** Number of tokens in the completion (may be undefined for some providers) */
+    completionTokens?: number;
     /** Total tokens used (prompt + completion) */
     totalTokens: number;
   };
@@ -28,8 +28,10 @@ export interface TextStreamResult {
   /** Promise that resolves with metadata when stream completes */
   metadata: Promise<{
     usage: {
-      promptTokens: number;
-      completionTokens: number;
+      /** Number of tokens in the prompt (may be undefined for some providers) */
+      promptTokens?: number;
+      /** Number of tokens in the completion (may be undefined for some providers) */
+      completionTokens?: number;
       totalTokens: number;
     };
     finishReason: "stop" | "length" | "content-filter" | "error" | "other";
@@ -71,6 +73,8 @@ export interface ProviderConfig {
   organization?: string;
   /** Optional project ID (for providers that support it) */
   project?: string;
+  /** Deployment ID for providers that require it (e.g., Google Gemini on Vertex AI) */
+  deploymentId?: string;
   /** Additional headers for API requests */
   headers?: Record<string, string>;
 }
@@ -80,7 +84,7 @@ export interface ProviderConfig {
  */
 export interface ModelConfig {
   /** The provider to use ('openai', 'anthropic', etc.) */
-  provider: "openai" | "anthropic" | "google";
+  provider: "openai" | "anthropic" | "google" | "openrouter";
   /** Model identifier (e.g., 'gpt-4', 'claude-3-opus-20240229') */
   modelId: string;
   /** Provider-specific configuration */
