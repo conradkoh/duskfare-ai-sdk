@@ -1,7 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { VercelAITextGenerationService } from "./text-generation-service.impl.js";
-import type { TextGenerationConfig, ModelConfig } from "./types.js";
 import { generateText, streamText } from "ai";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type {
+  AISDKFinishReason,
+  AISDKGenerateTextResponse,
+  AISDKProviderMetadata,
+  AISDKUsage,
+} from "./schemas.js";
+import { VercelAITextGenerationService } from "./text-generation-service.impl.js";
+import type { ModelConfig, TextGenerationConfig } from "./types.js";
 
 // Mock the AI SDK
 vi.mock("ai", () => ({
@@ -9,13 +15,34 @@ vi.mock("ai", () => ({
   streamText: vi.fn(),
 }));
 
+/**
+ * Type for OpenAI provider configuration
+ */
+interface OpenAIConfig {
+  apiKey?: string;
+  baseURL?: string;
+  headers?: Record<string, string>;
+  organization?: string;
+  project?: string;
+}
+
+/**
+ * Type for AI SDK streamText result
+ */
+interface AISDKStreamTextResponse {
+  textStream: AsyncIterable<string>;
+  usage: Promise<AISDKUsage>;
+  finishReason: Promise<AISDKFinishReason>;
+  experimental_providerMetadata: Promise<AISDKProviderMetadata>;
+}
+
 // Mock @ai-sdk/openai
 vi.mock("@ai-sdk/openai", () => ({
   openai: vi.fn((modelId: string) => ({
     modelId,
     provider: "openai",
   })),
-  createOpenAI: vi.fn((config: any) => {
+  createOpenAI: vi.fn((config: OpenAIConfig) => {
     return (modelId: string) => ({
       modelId,
       provider: "openai",
@@ -37,14 +64,14 @@ describe("VercelAITextGenerationService", () => {
     it("should generate text successfully with minimal config", async () => {
       // Arrange
       const prompt = "Hello, world!";
-      const mockResponse = {
+      const mockResponse: AISDKGenerateTextResponse = {
         text: "Generated response",
         usage: {
           promptTokens: 10,
           completionTokens: 20,
           totalTokens: 30,
         },
-        finishReason: "stop",
+        finishReason: "stop" as AISDKFinishReason,
         experimental_providerMetadata: {
           openai: {
             model: "gpt-4",
@@ -52,7 +79,9 @@ describe("VercelAITextGenerationService", () => {
         },
       };
 
-      vi.mocked(generateText).mockResolvedValue(mockResponse as any);
+      vi.mocked(generateText).mockResolvedValue(
+        mockResponse as unknown as Awaited<ReturnType<typeof generateText>>
+      );
 
       // Act
       const result = await service.generateText(prompt);
@@ -91,14 +120,16 @@ describe("VercelAITextGenerationService", () => {
         topP: 0.9,
       };
 
-      const mockResponse = {
+      const mockResponse: AISDKGenerateTextResponse = {
         text: "Response",
         usage: { promptTokens: 5, completionTokens: 10, totalTokens: 15 },
-        finishReason: "stop",
+        finishReason: "stop" as AISDKFinishReason,
         experimental_providerMetadata: { openai: { model: "gpt-4" } },
       };
 
-      vi.mocked(generateText).mockResolvedValue(mockResponse as any);
+      vi.mocked(generateText).mockResolvedValue(
+        mockResponse as unknown as Awaited<ReturnType<typeof generateText>>
+      );
 
       // Act
       await serviceWithDefaults.generateText(prompt, overrideConfig);
@@ -132,14 +163,16 @@ describe("VercelAITextGenerationService", () => {
       ];
 
       for (const testCase of testCases) {
-        const mockResponse = {
+        const mockResponse: AISDKGenerateTextResponse = {
           text: "Response",
           usage: { promptTokens: 5, completionTokens: 10, totalTokens: 15 },
-          finishReason: testCase.sdkReason,
+          finishReason: testCase.sdkReason as AISDKFinishReason,
           experimental_providerMetadata: { openai: { model: "gpt-4" } },
         };
 
-        vi.mocked(generateText).mockResolvedValue(mockResponse as any);
+        vi.mocked(generateText).mockResolvedValue(
+          mockResponse as unknown as Awaited<ReturnType<typeof generateText>>
+        );
 
         // Act
         const result = await service.generateText("test");
@@ -160,14 +193,16 @@ describe("VercelAITextGenerationService", () => {
         presencePenalty: 0.3,
       };
 
-      const mockResponse = {
+      const mockResponse: AISDKGenerateTextResponse = {
         text: "Response",
         usage: { promptTokens: 5, completionTokens: 10, totalTokens: 15 },
-        finishReason: "stop",
+        finishReason: "stop" as AISDKFinishReason,
         experimental_providerMetadata: { openai: { model: "gpt-3.5-turbo" } },
       };
 
-      vi.mocked(generateText).mockResolvedValue(mockResponse as any);
+      vi.mocked(generateText).mockResolvedValue(
+        mockResponse as unknown as Awaited<ReturnType<typeof generateText>>
+      );
 
       // Act
       await service.generateText("test", config);
@@ -186,10 +221,10 @@ describe("VercelAITextGenerationService", () => {
 
     it("should extract model from providerMetadata", async () => {
       // Arrange
-      const mockResponse = {
+      const mockResponse: AISDKGenerateTextResponse = {
         text: "Response",
         usage: { promptTokens: 5, completionTokens: 10, totalTokens: 15 },
-        finishReason: "stop",
+        finishReason: "stop" as AISDKFinishReason,
         experimental_providerMetadata: {
           openai: {
             model: "gpt-4-turbo",
@@ -197,7 +232,9 @@ describe("VercelAITextGenerationService", () => {
         },
       };
 
-      vi.mocked(generateText).mockResolvedValue(mockResponse as any);
+      vi.mocked(generateText).mockResolvedValue(
+        mockResponse as unknown as Awaited<ReturnType<typeof generateText>>
+      );
 
       // Act
       const result = await service.generateText("test");
@@ -222,14 +259,14 @@ describe("VercelAITextGenerationService", () => {
         },
       };
 
-      const mockResponse = {
+      const mockResponse: AISDKStreamTextResponse = {
         textStream: mockTextStream,
         usage: Promise.resolve({
           promptTokens: 10,
           completionTokens: 20,
           totalTokens: 30,
         }),
-        finishReason: Promise.resolve("stop"),
+        finishReason: Promise.resolve("stop" as AISDKFinishReason),
         experimental_providerMetadata: Promise.resolve({
           openai: {
             model: "gpt-4",
@@ -237,7 +274,9 @@ describe("VercelAITextGenerationService", () => {
         }),
       };
 
-      vi.mocked(streamText).mockResolvedValue(mockResponse as any);
+      vi.mocked(streamText).mockResolvedValue(
+        mockResponse as unknown as Awaited<ReturnType<typeof streamText>>
+      );
 
       // Act
       const result = await service.streamText(prompt);
@@ -288,20 +327,22 @@ describe("VercelAITextGenerationService", () => {
         },
       };
 
-      const mockResponse = {
+      const mockResponse: AISDKStreamTextResponse = {
         textStream: mockTextStream,
         usage: Promise.resolve({
           promptTokens: 5,
           completionTokens: 10,
           totalTokens: 15,
         }),
-        finishReason: Promise.resolve("stop"),
+        finishReason: Promise.resolve("stop" as AISDKFinishReason),
         experimental_providerMetadata: Promise.resolve({
           openai: { model: "gpt-4" },
         }),
       };
 
-      vi.mocked(streamText).mockResolvedValue(mockResponse as any);
+      vi.mocked(streamText).mockResolvedValue(
+        mockResponse as unknown as Awaited<ReturnType<typeof streamText>>
+      );
 
       // Act
       await serviceWithDefaults.streamText("test", config);
@@ -323,20 +364,22 @@ describe("VercelAITextGenerationService", () => {
         },
       };
 
-      const mockResponse = {
+      const mockResponse: AISDKStreamTextResponse = {
         textStream: mockTextStream,
         usage: Promise.resolve({
           promptTokens: 5,
           completionTokens: 10,
           totalTokens: 15,
         }),
-        finishReason: Promise.resolve("error"),
+        finishReason: Promise.resolve("error" as AISDKFinishReason),
         experimental_providerMetadata: Promise.resolve({
           openai: { model: "gpt-4" },
         }),
       };
 
-      vi.mocked(streamText).mockResolvedValue(mockResponse as any);
+      vi.mocked(streamText).mockResolvedValue(
+        mockResponse as unknown as Awaited<ReturnType<typeof streamText>>
+      );
 
       // Act
       const result = await service.streamText("test");
@@ -360,20 +403,22 @@ describe("VercelAITextGenerationService", () => {
         },
       };
 
-      const mockResponse = {
+      const mockResponse: AISDKStreamTextResponse = {
         textStream: mockTextStream,
         usage: Promise.resolve({
           promptTokens: 5,
           completionTokens: 10,
           totalTokens: 15,
         }),
-        finishReason: Promise.resolve("length"),
+        finishReason: Promise.resolve("length" as AISDKFinishReason),
         experimental_providerMetadata: Promise.resolve({
           openai: { model: "gpt-4" },
         }),
       };
 
-      vi.mocked(streamText).mockResolvedValue(mockResponse as any);
+      vi.mocked(streamText).mockResolvedValue(
+        mockResponse as unknown as Awaited<ReturnType<typeof streamText>>
+      );
 
       // Act
       const result = await service.streamText("test");
@@ -398,14 +443,16 @@ describe("VercelAITextGenerationService", () => {
         },
       };
 
-      const mockResponse = {
+      const mockResponse: AISDKGenerateTextResponse = {
         text: "Response",
         usage: { promptTokens: 5, completionTokens: 10, totalTokens: 15 },
-        finishReason: "stop",
+        finishReason: "stop" as AISDKFinishReason,
         experimental_providerMetadata: { openai: { model: "gpt-4" } },
       };
 
-      vi.mocked(generateText).mockResolvedValue(mockResponse as any);
+      vi.mocked(generateText).mockResolvedValue(
+        mockResponse as unknown as Awaited<ReturnType<typeof generateText>>
+      );
 
       // Act
       const serviceWithConfig = new VercelAITextGenerationService(modelConfig);
@@ -427,14 +474,16 @@ describe("VercelAITextGenerationService", () => {
         },
       };
 
-      const mockResponse = {
+      const mockResponse: AISDKGenerateTextResponse = {
         text: "Response",
         usage: { promptTokens: 5, completionTokens: 10, totalTokens: 15 },
-        finishReason: "stop",
+        finishReason: "stop" as AISDKFinishReason,
         experimental_providerMetadata: { openai: { model: "gpt-3.5-turbo" } },
       };
 
-      vi.mocked(generateText).mockResolvedValue(mockResponse as any);
+      vi.mocked(generateText).mockResolvedValue(
+        mockResponse as unknown as Awaited<ReturnType<typeof generateText>>
+      );
 
       // Act
       const serviceWithConfig = new VercelAITextGenerationService(modelConfig);
@@ -457,14 +506,16 @@ describe("VercelAITextGenerationService", () => {
         },
       };
 
-      const mockResponse = {
+      const mockResponse: AISDKGenerateTextResponse = {
         text: "Response",
         usage: { promptTokens: 5, completionTokens: 10, totalTokens: 15 },
-        finishReason: "stop",
+        finishReason: "stop" as AISDKFinishReason,
         experimental_providerMetadata: { openai: { model: "gpt-4" } },
       };
 
-      vi.mocked(generateText).mockResolvedValue(mockResponse as any);
+      vi.mocked(generateText).mockResolvedValue(
+        mockResponse as unknown as Awaited<ReturnType<typeof generateText>>
+      );
 
       // Act
       const serviceWithConfig = new VercelAITextGenerationService(modelConfig);
@@ -477,12 +528,12 @@ describe("VercelAITextGenerationService", () => {
     it("should throw error for unsupported provider", () => {
       // Arrange
       const modelConfig = {
-        provider: "unsupported",
+        provider: "unsupported" as ModelConfig["provider"],
         modelId: "model-1",
         config: {
           apiKey: "test-key",
         },
-      } as any;
+      };
 
       // Act & Assert
       expect(() => {
@@ -500,14 +551,16 @@ describe("VercelAITextGenerationService", () => {
         },
       };
 
-      const mockResponse = {
+      const mockResponse: AISDKGenerateTextResponse = {
         text: "Response",
         usage: { promptTokens: 5, completionTokens: 10, totalTokens: 15 },
-        finishReason: "stop",
+        finishReason: "stop" as AISDKFinishReason,
         experimental_providerMetadata: { openai: { model: "gpt-4" } },
       };
 
-      vi.mocked(generateText).mockResolvedValue(mockResponse as any);
+      vi.mocked(generateText).mockResolvedValue(
+        mockResponse as unknown as Awaited<ReturnType<typeof generateText>>
+      );
 
       // Act
       await service.generateText("test", config);
@@ -526,14 +579,16 @@ describe("VercelAITextGenerationService", () => {
         stopSequences: ["\n\n", "END"],
       };
 
-      const mockResponse = {
+      const mockResponse: AISDKGenerateTextResponse = {
         text: "Response",
         usage: { promptTokens: 5, completionTokens: 10, totalTokens: 15 },
-        finishReason: "stop",
+        finishReason: "stop" as AISDKFinishReason,
         experimental_providerMetadata: { openai: { model: "gpt-4" } },
       };
 
-      vi.mocked(generateText).mockResolvedValue(mockResponse as any);
+      vi.mocked(generateText).mockResolvedValue(
+        mockResponse as unknown as Awaited<ReturnType<typeof generateText>>
+      );
 
       // Act
       await service.generateText("test", config);

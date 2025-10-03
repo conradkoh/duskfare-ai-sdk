@@ -10,7 +10,7 @@ import { VercelAITextGenerationService } from "./text-generation-service.impl.js
 import type { ModelConfig } from "./types.js";
 
 // Example 1: Basic text generation with pre-configured model
-async function basicExample() {
+async function _basicExample() {
   const model = openai("gpt-4");
   const service = new VercelAITextGenerationService(model);
 
@@ -23,7 +23,7 @@ async function basicExample() {
 }
 
 // Example 2: Text generation with configuration
-async function configuredExample() {
+async function _configuredExample() {
   const model = openai("gpt-4");
 
   // Set default configuration
@@ -38,19 +38,19 @@ async function configuredExample() {
     {
       temperature: 0.9, // Higher temperature for more creativity
       maxTokens: 300,
-    }
+    },
   );
 
   console.log("Story:", result.text);
 }
 
 // Example 3: Streaming text generation
-async function streamingExample() {
+async function _streamingExample() {
   const model = openai("gpt-4");
   const service = new VercelAITextGenerationService(model);
 
   const result = await service.streamText(
-    "Explain quantum computing in simple terms."
+    "Explain quantum computing in simple terms.",
   );
 
   console.log("Streaming response:");
@@ -67,7 +67,7 @@ async function streamingExample() {
 }
 
 // Example 4: Using ModelConfig with API key in configuration
-async function modelConfigExample() {
+async function _modelConfigExample() {
   // Ensure OPENAI_API_KEY is set in environment
   if (!process.env.OPENAI_API_KEY) {
     throw new Error("OPENAI_API_KEY environment variable is required");
@@ -92,7 +92,7 @@ async function modelConfigExample() {
 }
 
 // Example 5: ModelConfig with custom base URL and headers
-async function customEndpointExample() {
+async function _customEndpointExample() {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error("OPENAI_API_KEY environment variable is required");
   }
@@ -115,7 +115,7 @@ async function customEndpointExample() {
 }
 
 // Example 6: Using headers and stop sequences in config
-async function advancedConfigExample() {
+async function _advancedConfigExample() {
   const model = openai("gpt-4");
   const service = new VercelAITextGenerationService(model);
 
@@ -127,14 +127,14 @@ async function advancedConfigExample() {
       headers: {
         "X-Request-ID": "custom-request-id",
       },
-    }
+    },
   );
 
   console.log(result.text);
 }
 
 // Example 7: Error handling
-async function errorHandlingExample() {
+async function _errorHandlingExample() {
   const model = openai("gpt-4");
   const service = new VercelAITextGenerationService(model, {
     maxTokens: 10, // Very low token limit
@@ -142,7 +142,7 @@ async function errorHandlingExample() {
 
   try {
     const result = await service.generateText(
-      "Write a very long essay about artificial intelligence."
+      "Write a very long essay about artificial intelligence.",
     );
 
     if (result.finishReason === "length") {

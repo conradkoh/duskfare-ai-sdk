@@ -16,7 +16,7 @@ export interface TextGenerationService {
    */
   generateText(
     prompt: string,
-    config?: TextGenerationConfig
+    config?: TextGenerationConfig,
   ): Promise<TextGenerationResult>;
 
   /**
@@ -27,6 +27,6 @@ export interface TextGenerationService {
    */
   streamText(
     prompt: string,
-    config?: TextGenerationConfig
+    config?: TextGenerationConfig,
   ): Promise<TextStreamResult>;
 }

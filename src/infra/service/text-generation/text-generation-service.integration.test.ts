@@ -12,7 +12,7 @@
  * 2. Run: pnpm test:integration
  */
 
-import { describe, it, expect, beforeAll } from "bun:test";
+import { beforeAll, describe, expect, it } from "bun:test";
 import { VercelAITextGenerationService } from "./text-generation-service.impl.js";
 import type { ModelConfig } from "./types.js";
 
@@ -31,7 +31,7 @@ describeIf("TextGenerationService Integration Tests", () => {
 
       if (!apiKey) {
         throw new Error(
-          "TEST_OPENROUTER_API_KEY environment variable is required for OpenRouter tests"
+          "TEST_OPENROUTER_API_KEY environment variable is required for OpenRouter tests",
         );
       }
 
@@ -83,7 +83,7 @@ describeIf("TextGenerationService Integration Tests", () => {
         result.usage.completionTokens !== undefined
       ) {
         expect(result.usage.totalTokens).toBe(
-          result.usage.promptTokens + result.usage.completionTokens
+          result.usage.promptTokens + result.usage.completionTokens,
         );
       }
 
@@ -163,7 +163,7 @@ describeIf("TextGenerationService Integration Tests", () => {
 
       if (!apiKey) {
         throw new Error(
-          "TEST_OPENROUTER_API_KEY environment variable is required"
+          "TEST_OPENROUTER_API_KEY environment variable is required",
         );
       }
 

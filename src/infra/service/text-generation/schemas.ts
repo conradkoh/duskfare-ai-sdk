@@ -77,4 +77,3 @@ export type AISDKFinishReason = z.infer<typeof AISDKFinishReasonSchema>;
  * TypeScript type inferred from Zod schema for infrastructure layer
  */
 export type AISDKProviderMetadata = z.infer<typeof AISDKProviderMetadataSchema>;
-

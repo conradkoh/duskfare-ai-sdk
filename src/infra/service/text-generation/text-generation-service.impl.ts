@@ -1,19 +1,19 @@
-import { generateText, streamText, type LanguageModel } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { generateText, type LanguageModel, streamText } from "ai";
+import {
+  AISDKFinishReasonSchema,
+  AISDKGenerateTextResponseSchema,
+  AISDKUsageSchema,
+} from "./schemas.js";
 import type { TextGenerationService } from "./text-generation-service.js";
 import type {
+  ModelConfig,
   TextGenerationConfig,
   TextGenerationResult,
   TextStreamResult,
-  ModelConfig,
 } from "./types.js";
-import {
-  AISDKGenerateTextResponseSchema,
-  AISDKUsageSchema,
-  AISDKFinishReasonSchema,
-} from "./schemas.js";
 
 /**
  * Implementation of TextGenerationService using Vercel AI SDK
@@ -249,7 +249,12 @@ export class VercelAITextGenerationService implements TextGenerationService {
    * @param sdkResult - Result from AI SDK streamText
    * @returns Adapted TextStreamResult
    */
-  private adaptStreamTextResult(sdkResult: any): TextStreamResult {
+  private adaptStreamTextResult(sdkResult: {
+    textStream: AsyncIterable<string>;
+    usage: Promise<unknown>;
+    finishReason: Promise<unknown>;
+    experimental_providerMetadata?: Promise<unknown>;
+  }): TextStreamResult {
     const stream = this.createAsyncIterator(sdkResult.textStream);
     const metadata = (async () => {
       const [usage, finishReason, providerMetadata] = await Promise.all([
@@ -283,7 +288,15 @@ export class VercelAITextGenerationService implements TextGenerationService {
       return {
         usage: usageResult,
         finishReason: this.mapFinishReason(validatedFinishReason),
-        model: this.extractModelFromProviderMetadata(providerMetadata),
+        model: this.extractModelFromProviderMetadata(
+          providerMetadata as
+            | {
+                openai?: { model?: string };
+                anthropic?: { model?: string };
+                google?: { model?: string };
+              }
+            | undefined
+        ),
       };
     })();
 

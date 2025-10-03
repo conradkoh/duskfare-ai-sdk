@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { FileToolImpl } from "./file-tool.js";
 import fs from "fs/promises";
-import path from "path";
 import os from "os";
+import path from "path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { FileToolImpl } from "./file-tool.js";
 
 describe("FileToolImpl", () => {
   let fileTool: FileToolImpl;

@@ -1,6 +1,6 @@
-import type { Result } from "../../types/Result.js";
 import fs from "fs/promises";
 import path from "path";
+import type { Result } from "../../types/Result.js";
 
 /**
  * Represents a single diff operation that can be applied to a file
@@ -145,7 +145,7 @@ export class FileToolImpl implements FileTool {
               operation.lineNumber > lines.length
             ) {
               throw new Error(
-                `insert_block: Line number ${operation.lineNumber} is out of bounds (file has ${lines.length} lines)`
+                `insert_block: Line number ${operation.lineNumber} is out of bounds (file has ${lines.length} lines)`,
               );
             }
             lines.splice(operation.lineNumber, 0, ...operation.lines);
@@ -160,7 +160,7 @@ export class FileToolImpl implements FileTool {
               operation.startLine > operation.endLine
             ) {
               throw new Error(
-                `delete_range: Range ${operation.startLine}-${operation.endLine} is invalid (file has ${lines.length} lines)`
+                `delete_range: Range ${operation.startLine}-${operation.endLine} is invalid (file has ${lines.length} lines)`,
               );
             }
             const deleteCount = operation.endLine - operation.startLine + 1;
@@ -176,14 +176,14 @@ export class FileToolImpl implements FileTool {
               operation.startLine > operation.endLine
             ) {
               throw new Error(
-                `replace_range: Range ${operation.startLine}-${operation.endLine} is invalid (file has ${lines.length} lines)`
+                `replace_range: Range ${operation.startLine}-${operation.endLine} is invalid (file has ${lines.length} lines)`,
               );
             }
             const deleteCount = operation.endLine - operation.startLine + 1;
             lines.splice(
               operation.startLine - 1,
               deleteCount,
-              ...operation.lines
+              ...operation.lines,
             );
             break;
           }
@@ -194,11 +194,11 @@ export class FileToolImpl implements FileTool {
             const result = this.findContentLine(
               lines,
               operation.searchContent,
-              occurrence
+              occurrence,
             );
             if (result.index === -1) {
               throw new Error(
-                `insert_after: Could not find occurrence ${occurrence} of "${operation.searchContent}". Found ${result.totalMatches} matches total.`
+                `insert_after: Could not find occurrence ${occurrence} of "${operation.searchContent}". Found ${result.totalMatches} matches total.`,
               );
             }
             lines.splice(result.index + 1, 0, operation.content);
@@ -211,11 +211,11 @@ export class FileToolImpl implements FileTool {
             const result = this.findContentLine(
               lines,
               operation.searchContent,
-              occurrence
+              occurrence,
             );
             if (result.index === -1) {
               throw new Error(
-                `insert_before: Could not find occurrence ${occurrence} of "${operation.searchContent}". Found ${result.totalMatches} matches total.`
+                `insert_before: Could not find occurrence ${occurrence} of "${operation.searchContent}". Found ${result.totalMatches} matches total.`,
               );
             }
             lines.splice(result.index, 0, operation.content);
@@ -229,7 +229,7 @@ export class FileToolImpl implements FileTool {
               lines,
               operation.oldContent,
               operation.newContent,
-              occurrence
+              occurrence,
             );
             if (!result.found) {
               const preview =
@@ -237,7 +237,7 @@ export class FileToolImpl implements FileTool {
                   ? operation.oldContent.substring(0, 50) + "..."
                   : operation.oldContent;
               throw new Error(
-                `replace_content: Could not find occurrence ${occurrence} of content. Found ${result.totalMatches} matches total. Searching for: "${preview}"`
+                `replace_content: Could not find occurrence ${occurrence} of content. Found ${result.totalMatches} matches total. Searching for: "${preview}"`,
               );
             }
             lines = result.lines;
@@ -250,7 +250,7 @@ export class FileToolImpl implements FileTool {
             const result = this.findAndDeleteContent(
               lines,
               operation.content,
-              occurrence
+              occurrence,
             );
             if (!result.found) {
               const preview =
@@ -258,7 +258,7 @@ export class FileToolImpl implements FileTool {
                   ? operation.content.substring(0, 50) + "..."
                   : operation.content;
               throw new Error(
-                `delete_content: Could not find occurrence ${occurrence} of content. Found ${result.totalMatches} matches total. Searching for: "${preview}"`
+                `delete_content: Could not find occurrence ${occurrence} of content. Found ${result.totalMatches} matches total. Searching for: "${preview}"`,
               );
             }
             lines = result.lines;
@@ -289,7 +289,7 @@ export class FileToolImpl implements FileTool {
   private findContentLine(
     lines: string[],
     searchContent: string,
-    occurrence: number
+    occurrence: number,
   ): { index: number; totalMatches: number } {
     let count = 0;
     let foundIndex = -1;
@@ -320,7 +320,7 @@ export class FileToolImpl implements FileTool {
     lines: string[],
     oldContent: string,
     newContent: string,
-    occurrence: number
+    occurrence: number,
   ): { lines: string[]; found: boolean; totalMatches: number } {
     const oldContentLines = oldContent.split("\n");
     const newContentLines = newContent.split("\n");
@@ -377,7 +377,7 @@ export class FileToolImpl implements FileTool {
   private findAndDeleteContent(
     lines: string[],
     content: string,
-    occurrence: number
+    occurrence: number,
   ): { lines: string[]; found: boolean; totalMatches: number } {
     const contentLines = content.split("\n");
 
