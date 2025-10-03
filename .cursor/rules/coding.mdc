@@ -9,11 +9,13 @@ alwaysApply: true
 ALWAYS apply Dependency Inversion to make code testable
 ALWAYS ensure that generated code has TSDoc comments
 SHOULD prefer to modify files rather than create new ones to prevent excessive new file changes
+NEVER use type `any` when generating typescript code and ALWAYS generate the proper types
 
 ## Testing & Validation
 
 NEVER write tests unless requested
 NEVER attempt to run the dev server or the build command unless explicitly asked by the user
+ALWAYS ensure that the typechecks, linting and tests pass after any changes you make
 
 ## Documentation and Notes
 
@@ -21,3 +23,9 @@ NEVER attempt to run the dev server or the build command unless explicitly asked
 - ALWAYS prefer to keep wording concise and to the point
 - ALWAYS prefer to use code to represent complex concepts when words may be ambiguous
 - ALWAYS use typescript interfaces to represent data models, contracts
+
+## External Services / Models
+
+- ALWAYS use zod to model external services / models
+- ALWAYS use z.infer to convert the zod schema to a typescript interface for the infrastructure layer
+- ALWAYS validate the schema of a response from an external service / model and fail if it doesn't match
