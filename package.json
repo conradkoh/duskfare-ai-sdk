@@ -12,15 +12,16 @@
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:integration": "bun test --env-file=.env.test src/infra/service/text-generation/text-generation-service.integration.test.ts"
+    "test:integration": "bun test --env-file=.env.test src/infra/service/text-generation/text-generation-service.integration.test.ts",
+    "prepare": "husky"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.9.0",
   "dependencies": {
-    "@ai-sdk/openai": "^2.0.42",
     "@ai-sdk/google": "^2.0.17",
+    "@ai-sdk/openai": "^2.0.42",
     "@openrouter/ai-sdk-provider": "^1.2.0",
     "@types/bun": "^1.2.23",
     "ai": "^5.0.59",
@@ -31,6 +32,13 @@
   "devDependencies": {
     "@types/node": "^24.6.2",
     "@vitest/ui": "^3.2.4",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.3",
     "vitest": "^3.2.4"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "biome check --write"
+    ]
   }
 }

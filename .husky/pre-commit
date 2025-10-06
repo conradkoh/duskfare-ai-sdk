@@ -1,0 +1,7 @@
+# Run typechecks
+echo "Running type checks..."
+pnpm tsc --noEmit
+
+# Run lint-staged for linting
+echo "Running linter on staged files..."
+pnpm lint-staged

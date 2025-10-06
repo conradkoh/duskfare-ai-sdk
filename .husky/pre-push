@@ -1,0 +1,9 @@
+# Run unit tests
+echo "Running unit tests..."
+pnpm test:run
+
+# Run integration tests
+echo "Running integration tests..."
+pnpm test:integration
+
+
